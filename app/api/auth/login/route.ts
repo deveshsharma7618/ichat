@@ -3,7 +3,7 @@ import clientPromise from '@/lib/mongodb';
 import { UserModel } from '@/models/User';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = process.env.JWT_SECRET || 'deveshSharmaSecretKey';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,6 +33,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
+    if (!user.password) {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
     const isPasswordValid = await userModel.comparePassword(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json(

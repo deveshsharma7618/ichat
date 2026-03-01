@@ -5,7 +5,12 @@ export interface User {
   _id?: ObjectId;
   name: string;
   email: string;
-  password: string;
+  password?: string;
+  image?: string;
+  provider?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  tokenExpiry?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -14,6 +19,8 @@ export interface UserWithoutPassword {
   _id: ObjectId;
   name: string;
   email: string;
+  image?: string;
+  provider?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

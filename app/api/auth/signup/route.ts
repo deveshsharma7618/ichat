@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { UserModel } from '@/models/User';
 import jwt from 'jsonwebtoken';
+import { access } from 'fs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = process.env.JWT_SECRET || 'deveshSharmaSecretKey';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,8 +68,15 @@ export async function POST(request: NextRequest) {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
+          image : user.image || null,
+          provider: user.provider || 'credentials',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          refreshToken: null, // You can implement refresh token logic if needed
+          
         },
-        token,
+        accessToken: token,
       },
       { status: 201 }
     );

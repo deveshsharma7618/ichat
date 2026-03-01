@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faUser,
@@ -19,9 +19,34 @@ import {
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function Settings() {
+  const { status } = useSession();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('account');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    if (status === 'unauthenticated') {
+      router.push('/');
+    }
+  }, [isMounted, status, router]);
+
+  if (status === 'loading') {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    return null;
+  }
   const [darkMode, setDarkMode] = useState(false);
   const [settings, setSettings] = useState({
     email: 'john.doe@example.com',
@@ -41,7 +66,7 @@ export default function Settings() {
 
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
-  const handleToggle = (key: string) => {
+  const handleToggle = (key: keyof typeof settings) => {
     setSettings({ ...settings, [key]: !settings[key] });
     setUnsavedChanges(true);
   };

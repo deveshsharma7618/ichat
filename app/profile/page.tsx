@@ -1,19 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faEnvelope, faPhone, faMapMarker, faCamera, faSave, faTimes, faSignOutAlt, faLock } from '@fortawesome/free-solid-svg-icons';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
+interface UserData {
+  name: string;
+  email: string;
+  accessToken: string;
+  id : string;
+  image: string | null;
+  provider: string;
+}
 
 export default function Profile() {
+  const { status } = useSession();
+  const router = useRouter();
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    let user: any = null;
+    try {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        user = JSON.parse(userStr);
+      }
+    } catch (e) {
+      console.error("Error parsing user from localStorage:", e);
+    }
+
+    if (status === 'unauthenticated' && !user) {
+      console.log("User is unauthenticated, redirecting to home...");
+      router.push("/");
+      return;
+    }
+
+    if (user && user.email) {
+      setUserData(user);
+      setProfileData({
+        name: user.name || 'John Doe',
+        email: user.email || 'john.doe@example.com',
+        avatar: user.image || 'https://i.pravatar.cc/150?img=3',
+      });
+    }
+    console.log('User data from localStorage:', user);
+  }, [isMounted, status, router]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    location: 'New York, USA',
-    bio: 'A passionate developer and tech enthusiast.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
+    name: userData?.name || 'John Doe',
+    email: userData?.email || 'john.doe@example.com',
+    avatar: userData?.image || 'https://i.pravatar.cc/150?img=3',
   });
 
   const [formData, setFormData] = useState(profileData);
@@ -46,6 +93,14 @@ export default function Profile() {
   const handleSignOut = () => {
     window.location.href = '/';
   };
+
+  if (status === 'loading') {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 py-8">
@@ -126,21 +181,6 @@ export default function Profile() {
                       </div>
 
                       <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          <FontAwesomeIcon icon={faPhone} className="w-4 h-4 mr-2" />
-                          Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          name="phone"
-                          id="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
-                        />
-                      </div>
-
-                      <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                           <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 mr-2" />
                           Email Address
@@ -154,36 +194,6 @@ export default function Profile() {
                           className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
                         />
                       </div>
-
-                      <div>
-                        <label htmlFor="location" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          <FontAwesomeIcon icon={faMapMarker} className="w-4 h-4 mr-2" />
-                          Location
-                        </label>
-                        <input
-                          type="text"
-                          name="location"
-                          id="location"
-                          value={formData.location}
-                          onChange={handleInputChange}
-                          className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Bio
-                      </label>
-                      <textarea
-                        name="bio"
-                        id="bio"
-                        value={formData.bio}
-                        onChange={handleInputChange}
-                        rows={4}
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition resize-none"
-                        placeholder="Tell us about yourself"
-                      />
                     </div>
 
                     <div className="flex gap-3 pt-4">
@@ -223,24 +233,6 @@ export default function Profile() {
                         Email:
                       </span>
                       <span className="text-gray-800 dark:text-white">{profileData.email}</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-600 dark:text-gray-400 font-semibold w-32 flex items-center gap-2">
-                        <FontAwesomeIcon icon={faPhone} className="w-4 h-4" />
-                        Phone:
-                      </span>
-                      <span className="text-gray-800 dark:text-white">{profileData.phone}</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-600 dark:text-gray-400 font-semibold w-32 flex items-center gap-2">
-                        <FontAwesomeIcon icon={faMapMarker} className="w-4 h-4" />
-                        Location:
-                      </span>
-                      <span className="text-gray-800 dark:text-white">{profileData.location}</span>
-                    </div>
-                    <div className="flex items-start">
-                      <span className="text-gray-600 dark:text-gray-400 font-semibold w-32">Bio:</span>
-                      <span className="text-gray-800 dark:text-white">{profileData.bio}</span>
                     </div>
                   </div>
 
