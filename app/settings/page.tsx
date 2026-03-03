@@ -9,62 +9,117 @@ import {
   faPalette,
   faGlobe,
   faDatabase,
-  faToggleOn,
-  faToggleOff,
   faSave,
   faArrowLeft,
-  faMoon,
-  faSun,
-  faDownload,
-  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useClientAuth } from '@/lib/client-auth';
+import SettingsTabs from '@/app/components/settings/SettingsTabs';
+import AccountSettings from '@/app/components/settings/AccountSettings';
+import PrivacySettings from '@/app/components/settings/PrivacySettings';
+import NotificationSettings from '@/app/components/settings/NotificationSettings';
+import AppearanceSettings from '@/app/components/settings/AppearanceSettings';
+import GeneralSettings from '@/app/components/settings/GeneralSettings';
+import DataPrivacySettings from '@/app/components/settings/DataPrivacySettings';
+import LoadingSpinner from '@/app/components/shared/LoadingSpinner';
+
+// Default settings
+const DEFAULT_SETTINGS = {
+  email : "",
+  phone: '',
+  language: 'English',
+  timezone: 'Eastern Time (ET)',
+  emailNotifications: true,
+  pushNotifications: true,
+  messageNotifications: true,
+  profileVisibility: 'Public',
+  allowMessages: 'Everyone',
+  showOnlineStatus: true,
+  allowReadReceipts: true,
+  twoFactor: false,
+  activityStatus: true,
+  darkMode: false,
+};
 
 export default function Settings() {
-  const { status } = useSession();
-  const router = useRouter();
+  const { user, isLoading: authLoading, isAuthenticated } = useClientAuth({ requireAuth: true });
   const [activeTab, setActiveTab] = useState('account');
-  const [isMounted, setIsMounted] = useState(false);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
 
+  // Initialize settings from localStorage and fetch user data
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-    
-    if (status === 'unauthenticated') {
-      router.push('/');
+    if (authLoading || !isAuthenticated) {
+      return;
     }
-  }, [isMounted, status, router]);
 
-  if (status === 'loading') {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    loadSettings(user?.email || '');
+  }, [authLoading, isAuthenticated, user?.email]);
+
+  // Apply dark mode setting to document
+  useEffect(() => {
+    if (authLoading) return;
+    
+    const htmlElement = document.documentElement;
+    if (settings.darkMode) {
+      htmlElement.classList.add('dark');
+    } else {
+      htmlElement.classList.remove('dark');
+    }
+  }, [settings.darkMode, authLoading]);
+
+  // Load settings from localStorage
+  const loadSettings = async (email: string) => {
+    try {
+      // Try to get settings from localStorage first
+      const savedSettings = localStorage.getItem('userSettings');
+      if (savedSettings) {
+        setSettings({ ...JSON.parse(savedSettings), email });
+      } else {
+        // If no saved settings, initialize with defaults
+        localStorage.setItem('userSettings', JSON.stringify({ ...DEFAULT_SETTINGS, email }));
+      }
+
+      // Fetch user data from API if authenticated
+      if (email) {
+        await fetchUserData();
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      // Fallback to defaults if localStorage fails
+      setSettings({ ...DEFAULT_SETTINGS, email });
+    } finally {
+      setIsPageLoading(false);
+    }
+  };
+
+  // Fetch user profile data from API
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const userData = await response.json();
+        // Merge API data with localStorage settings
+        const mergedSettings = {
+          ...settings,
+          email: userData.email || settings.email,
+          phone: userData.phone || settings.phone,
+        };
+        setSettings(mergedSettings);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  if (authLoading || isPageLoading) {
+    return <LoadingSpinner text="Loading settings..." />;
   }
 
-  if (status === 'unauthenticated') {
+  if (!isAuthenticated) {
     return null;
   }
-  const [darkMode, setDarkMode] = useState(false);
-  const [settings, setSettings] = useState({
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    language: 'English',
-    timezone: 'Eastern Time (ET)',
-    emailNotifications: true,
-    pushNotifications: true,
-    messageNotifications: true,
-    profileVisibility: 'Public',
-    allowMessages: 'Everyone',
-    showOnlineStatus: true,
-    allowReadReceipts: true,
-    twoFactor: false,
-    activityStatus: true,
-  });
-
-  const [unsavedChanges, setUnsavedChanges] = useState(false);
 
   const handleToggle = (key: keyof typeof settings) => {
     setSettings({ ...settings, [key]: !settings[key] });
@@ -77,9 +132,30 @@ export default function Settings() {
     setUnsavedChanges(true);
   };
 
-  const handleSave = () => {
-    setUnsavedChanges(false);
-    // Here you would typically send the settings to your backend
+  const handleSave = async () => {
+    try {
+      // Save to localStorage
+      localStorage.setItem('userSettings', JSON.stringify(settings));
+      
+      // Optional: Send settings to API for server-side storage
+      try {
+        await fetch('/api/user/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(settings),
+        });
+      } catch (error) {
+        console.warn('Could not save settings to server, but saved locally:', error);
+      }
+
+      setUnsavedChanges(false);
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings. Please try again.');
+    }
   };
 
   const handleExportData = () => {
@@ -130,24 +206,11 @@ export default function Settings() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar Navigation */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 h-fit sticky top-8">
-              <nav className="space-y-2">
-                {settingsTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full text-left px-4 py-3 rounded-lg transition duration-200 flex items-center gap-3 ${
-                      activeTab === tab.id
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={tab.icon} className="w-4 h-4" />
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
+            <SettingsTabs
+              tabs={settingsTabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
           </div>
 
           {/* Settings Content */}
@@ -155,341 +218,66 @@ export default function Settings() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
               {/* Account Settings */}
               {activeTab === 'account' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Account Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        value={settings.email}
-                        disabled
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed"
-                      />
-                      <p className="text-xs text-gray-500 mt-2">Email cannot be changed directly. Contact support for email changes.</p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        value={settings.phone}
-                        disabled
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed"
-                      />
-                      <p className="text-xs text-gray-500 mt-2">Update your phone number in your profile settings.</p>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                        <FontAwesomeIcon icon={faLock} className="w-4 h-4" />
-                        Security
-                      </h3>
-
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="font-medium text-gray-700 dark:text-gray-300">Two-Factor Authentication</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security to your account</p>
-                        </div>
-                        <button
-                          onClick={() => handleToggle('twoFactor')}
-                          className="text-3xl transition duration-200"
-                        >
-                          <FontAwesomeIcon
-                            icon={settings.twoFactor ? faToggleOn : faToggleOff}
-                            className={settings.twoFactor ? 'text-green-600' : 'text-gray-400'}
-                          />
-                        </button>
-                      </div>
-
-                      <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition duration-200">
-                        Change Password
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <AccountSettings
+                  email={settings.email}
+                  twoFactor={settings.twoFactor}
+                  onToggleTwoFactor={() => handleToggle('twoFactor')}
+                />
               )}
 
               {/* Privacy Settings */}
               {activeTab === 'privacy' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Privacy Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="profileVisibility" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Profile Visibility
-                      </label>
-                      <select
-                        id="profileVisibility"
-                        name="profileVisibility"
-                        value={settings.profileVisibility}
-                        onChange={handleSelectChange}
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full dark:bg-gray-700 dark:text-white"
-                      >
-                        <option>Public</option>
-                        <option>Private</option>
-                        <option>Friends Only</option>
-                      </select>
-                      <p className="text-xs text-gray-500 mt-2">Choose who can see your profile information</p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="allowMessages" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Who Can Message You
-                      </label>
-                      <select
-                        id="allowMessages"
-                        name="allowMessages"
-                        value={settings.allowMessages}
-                        onChange={handleSelectChange}
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full dark:bg-gray-700 dark:text-white"
-                      >
-                        <option>Everyone</option>
-                        <option>Friends Only</option>
-                        <option>No One</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700 dark:text-gray-300">Show Online Status</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Let others see when you're online</p>
-                        </div>
-                        <button
-                          onClick={() => handleToggle('showOnlineStatus')}
-                          className="text-3xl transition duration-200"
-                        >
-                          <FontAwesomeIcon
-                            icon={settings.showOnlineStatus ? faToggleOn : faToggleOff}
-                            className={settings.showOnlineStatus ? 'text-green-600' : 'text-gray-400'}
-                          />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700 dark:text-gray-300">Allow Read Receipts</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Show when you've read messages</p>
-                        </div>
-                        <button
-                          onClick={() => handleToggle('allowReadReceipts')}
-                          className="text-3xl transition duration-200"
-                        >
-                          <FontAwesomeIcon
-                            icon={settings.allowReadReceipts ? faToggleOn : faToggleOff}
-                            className={settings.allowReadReceipts ? 'text-green-600' : 'text-gray-400'}
-                          />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700 dark:text-gray-300">Activity Status</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Show your activity status</p>
-                        </div>
-                        <button
-                          onClick={() => handleToggle('activityStatus')}
-                          className="text-3xl transition duration-200"
-                        >
-                          <FontAwesomeIcon
-                            icon={settings.activityStatus ? faToggleOn : faToggleOff}
-                            className={settings.activityStatus ? 'text-green-600' : 'text-gray-400'}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <PrivacySettings
+                  profileVisibility={settings.profileVisibility}
+                  allowMessages={settings.allowMessages}
+                  showOnlineStatus={settings.showOnlineStatus}
+                  allowReadReceipts={settings.allowReadReceipts}
+                  activityStatus={settings.activityStatus}
+                  onSelectChange={handleSelectChange}
+                  onToggleOnlineStatus={() => handleToggle('showOnlineStatus')}
+                  onToggleReadReceipts={() => handleToggle('allowReadReceipts')}
+                  onToggleActivityStatus={() => handleToggle('activityStatus')}
+                />
               )}
 
               {/* Notification Settings */}
               {activeTab === 'notifications' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Notification Settings</h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-700 dark:text-gray-300">Email Notifications</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Receive notifications via email</p>
-                      </div>
-                      <button
-                        onClick={() => handleToggle('emailNotifications')}
-                        className="text-3xl transition duration-200"
-                      >
-                        <FontAwesomeIcon
-                          icon={settings.emailNotifications ? faToggleOn : faToggleOff}
-                          className={settings.emailNotifications ? 'text-green-600' : 'text-gray-400'}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-700 dark:text-gray-300">Push Notifications</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Receive push notifications on your device</p>
-                      </div>
-                      <button
-                        onClick={() => handleToggle('pushNotifications')}
-                        className="text-3xl transition duration-200"
-                      >
-                        <FontAwesomeIcon
-                          icon={settings.pushNotifications ? faToggleOn : faToggleOff}
-                          className={settings.pushNotifications ? 'text-green-600' : 'text-gray-400'}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-700 dark:text-gray-300">Message Notifications</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Get notified when you receive new messages</p>
-                      </div>
-                      <button
-                        onClick={() => handleToggle('messageNotifications')}
-                        className="text-3xl transition duration-200"
-                      >
-                        <FontAwesomeIcon
-                          icon={settings.messageNotifications ? faToggleOn : faToggleOff}
-                          className={settings.messageNotifications ? 'text-green-600' : 'text-gray-400'}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <NotificationSettings
+                  emailNotifications={settings.emailNotifications}
+                  pushNotifications={settings.pushNotifications}
+                  messageNotifications={settings.messageNotifications}
+                  onToggleEmail={() => handleToggle('emailNotifications')}
+                  onTogglePush={() => handleToggle('pushNotifications')}
+                  onToggleMessage={() => handleToggle('messageNotifications')}
+                />
               )}
 
               {/* Appearance Settings */}
               {activeTab === 'appearance' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Appearance Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <p className="font-medium text-gray-700 dark:text-gray-300 mb-4">Theme</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <button
-                          onClick={() => setDarkMode(false)}
-                          className={`p-4 rounded-lg border-2 transition duration-200 flex flex-col items-center gap-2 ${
-                            !darkMode
-                              ? 'border-blue-600 bg-blue-50 dark:bg-gray-700'
-                              : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                        >
-                          <FontAwesomeIcon icon={faSun} className="w-8 h-8 text-yellow-500" />
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Light</span>
-                        </button>
-                        <button
-                          onClick={() => setDarkMode(true)}
-                          className={`p-4 rounded-lg border-2 transition duration-200 flex flex-col items-center gap-2 ${
-                            darkMode
-                              ? 'border-blue-600 bg-blue-50 dark:bg-gray-700'
-                              : 'border-gray-300 dark:border-gray-600'
-                          }`}
-                        >
-                          <FontAwesomeIcon icon={faMoon} className="w-8 h-8 text-indigo-500" />
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Dark</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <AppearanceSettings
+                  darkMode={settings.darkMode}
+                  onThemeChange={(isDark) => {
+                    setSettings({ ...settings, darkMode: isDark });
+                    setUnsavedChanges(true);
+                  }}
+                />
               )}
 
               {/* General Settings */}
               {activeTab === 'general' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">General Settings</h2>
-                  <div className="space-y-6">
-                    <div>
-                      <label htmlFor="language" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Language
-                      </label>
-                      <select
-                        id="language"
-                        name="language"
-                        value={settings.language}
-                        onChange={handleSelectChange}
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full dark:bg-gray-700 dark:text-white"
-                      >
-                        <option>English</option>
-                        <option>Spanish</option>
-                        <option>French</option>
-                        <option>German</option>
-                        <option>Chinese</option>
-                        <option>Japanese</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Timezone
-                      </label>
-                      <select
-                        id="timezone"
-                        name="timezone"
-                        value={settings.timezone}
-                        onChange={handleSelectChange}
-                        className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full dark:bg-gray-700 dark:text-white"
-                      >
-                        <option>Pacific Time (PT)</option>
-                        <option>Eastern Time (ET)</option>
-                        <option>Central Time (CT)</option>
-                        <option>Mountain Time (MT)</option>
-                        <option>GMT</option>
-                        <option>CET</option>
-                        <option>IST</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                <GeneralSettings
+                  language={settings.language}
+                  timezone={settings.timezone}
+                  onSelectChange={handleSelectChange}
+                />
               )}
 
               {/* Data & Privacy Settings */}
               {activeTab === 'data' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">Data & Privacy</h2>
-                  <div className="space-y-6">
-                    <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg border border-blue-200 dark:border-blue-700">
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
-                        We take your privacy seriously. Your data is encrypted and stored securely. You can download or delete your data at any time.
-                      </p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Data Export</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Download a copy of your data in JSON format. This includes your profile information, messages, and settings.
-                      </p>
-                      <button
-                        onClick={handleExportData}
-                        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200 flex items-center gap-2"
-                      >
-                        <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
-                        Export My Data
-                      </button>
-                    </div>
-
-                    <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-4">Danger Zone</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Deleting your account is permanent and cannot be undone. All your data will be removed from our servers.
-                      </p>
-                      <button
-                        onClick={handleDeleteAccount}
-                        className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition duration-200 flex items-center gap-2"
-                      >
-                        <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                        Delete My Account
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <DataPrivacySettings
+                  onExportData={handleExportData}
+                  onDeleteAccount={handleDeleteAccount}
+                />
               )}
             </div>
           </div>

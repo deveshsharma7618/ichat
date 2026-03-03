@@ -8,7 +8,7 @@ export interface Chat {
   email: string;
   token ?: string;
   messages : Message[]; 
-  friend ?: UserWithoutPassword;
+  friendEmail ?: string;
   lastSend?: Date;
   lastSeen?: Date;
 }

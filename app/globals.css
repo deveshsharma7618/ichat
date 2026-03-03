@@ -249,6 +249,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  height: 80vh;
 }
 
 .pane-head {
@@ -291,6 +292,12 @@ body {
   gap: 16px;
   padding: 10px 0 0;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.message-stream::-webkit-scrollbar {
+  display: none;
 }
 
 .date-chip {
@@ -423,4 +430,84 @@ body {
   .bubble {
     max-width: 85%;
   }
+}
+
+
+.message.incoming .message-content::after {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-right: 6px solid #151820;
+  border-bottom: 6px solid transparent;
+}
+
+
+.message.outgoing .message-content::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 12px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-left: 6px solid #f7d7b0;
+  border-bottom: 6px solid transparent;
+}
+
+.message {
+  display: flex;
+  width: 100%;
+}
+
+.message.incoming {
+  justify-content: flex-start;
+}
+
+.message.incoming .message-content {
+  background: #151820;
+  border-radius: 18px;
+  padding: 12px 16px;
+  width: fit-content;
+  max-width: 70%;
+  color: #f7f2ea;
+  box-shadow: 0 12px 24px rgba(6, 7, 12, 0.45);
+  position: relative;
+}
+
+.message.outgoing {
+  justify-content: flex-end;
+}
+
+.message.outgoing .message-content {
+  background: #f7d7b0;
+  border-radius: 18px;
+  padding: 12px 16px;
+  width: fit-content;
+  max-width: 70%;
+  color: #1b1208;
+  box-shadow: 0 12px 24px rgba(6, 7, 12, 0.45);
+  position: relative;
+}
+
+.message-content {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+
+.message.incoming .message-time {
+  text-align: left;
+}
+
+.message-stream{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 0 0;
+  overflow-y: auto;
 }

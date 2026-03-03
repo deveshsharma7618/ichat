@@ -34,7 +34,7 @@ export default function SignUp() {
         if (token) {
           console.log('Token found, redirecting to chat...');
           setHasRedirected(true);
-          window.location.href = '/chat'; // Redirect to chat page if token exists
+          // window.location.href = '/chat'; // Redirect to chat page if token exists
           return;
         }
       } catch (e) {

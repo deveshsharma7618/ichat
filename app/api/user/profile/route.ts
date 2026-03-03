@@ -1,12 +1,11 @@
-import { getServerSession } from "next-auth/next";
-import { AUTH_OPTIONS } from "@/app/api/auth/[...nextauth]/route";
 import clientPromise from "@/lib/mongodb";
+import { getAuthenticatedUserEmail } from "@/lib/auth-helpers";
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(AUTH_OPTIONS);
+    const email = await getAuthenticatedUserEmail();
 
-    if (!session?.user?.email) {
+    if (!email) {
       return Response.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -18,7 +17,7 @@ export async function GET(request: Request) {
 
     // Get user with all OAuth data and tokens
     const user = await db.collection("users").findOne(
-      { email: session.user.email },
+      { email },
       { 
         projection: { 
           password: 0,

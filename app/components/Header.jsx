@@ -3,7 +3,6 @@ import Link from "next/link";
 import React, { useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faHome,
   faComments,
   faUser,
   faCog,
@@ -11,55 +10,28 @@ import {
   faMessage,
 } from "@fortawesome/free-solid-svg-icons";
 import { useState } from "react";
-import { getSession, signOut } from "next-auth/react";
+import { useClientAuth, handleLogout } from "@/lib/client-auth";
 
 const Header = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const { user, isAuthenticated } = useClientAuth();
+  const [activeTab, setActiveTab] = useState("chat");
+  const avatarUrl = user?.image || "";
 
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      // Check for existing token
-      try {
-        const token = localStorage.getItem("token");
-        if (token) {
-          console.log("Token found, redirecting to chat...");
-          const userData = localStorage.getItem("user");
-          if (userData) {
-            const user = JSON.parse(userData);
-            console.log("User data from localStorage:", user);
-            setAvatarUrl(user.image || ""); // Assuming user object has an avatar property
-          }
-          setIsLoggedIn(true);
-          return;
-        }
-      } catch (e) {
-        console.error("Error accessing localStorage:", e);
-      }
-
-      // Check for session
-      try {
-        const session = await getSession();
-        console.log("Current session:", session);
-        const user = session?.user;
-        if (user) {
-          console.log("User is authenticated via session:", user);
-          localStorage.setItem("user", JSON.stringify(user));
-          setAvatarUrl(user.image || ""); // Set avatar URL from session user data
-          setIsLoggedIn(true);
-        }
-      } catch (e) {
-        console.error("Error checking session:", e);
-      }
-    };
-
-    checkAuthStatus();
+    // Set active tab based on current URL path
+    const path = window.location.pathname;
+    if (path.startsWith("/chat")) {
+      setActiveTab("chat");
+    }
+    else if (path.startsWith("/profile")) {
+      setActiveTab("profile");
+    }
+    else if (path.startsWith("/settings")) {
+      setActiveTab("settings");
+    } else {
+      setActiveTab("");
+    }
   }, []);
-
-  const logOut = async () => {
-    localStorage.removeItem("user");
-    await signOut({ redirect: true, callbackUrl: "/" });
-  };
 
   return (
     <header className="w-full border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
@@ -80,11 +52,12 @@ const Header = () => {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
-            {isLoggedIn && (
+            {isAuthenticated && (
               <>
                 <Link
                   href="/chat"
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group${activeTab === "chat" ? " bg-gray-200 dark:bg-gray-700" : ""}`}
+                  onClick={() => setActiveTab("chat")}    
                 >
                   <FontAwesomeIcon
                     icon={faComments}
@@ -95,7 +68,8 @@ const Header = () => {
 
                 <Link
                   href="/profile"
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group${activeTab === "profile" ? " bg-gray-200 dark:bg-gray-700" : ""}`}
+                  onClick={() => setActiveTab("profile")}
                 >
                   <FontAwesomeIcon
                     icon={faUser}
@@ -105,7 +79,8 @@ const Header = () => {
                 </Link>
                 <Link
                   href="/settings"
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 group${activeTab === "settings" ? " bg-gray-200 dark:bg-gray-700" : ""}`}
+                  onClick={() => setActiveTab("settings")}
                 >
                   <FontAwesomeIcon
                     icon={faCog}
@@ -119,7 +94,7 @@ const Header = () => {
 
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-3">
-              {!isLoggedIn ? (
+              {!isAuthenticated ? (
                 <>
                   <Link
                     href="/"
@@ -143,14 +118,14 @@ const Header = () => {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="text-sm">U</span>
+                    <span className="text-sm">{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
                   )}
                 </div>
               )}
             </div>
-            {isLoggedIn && (
+            {isAuthenticated && (
               <button
-                onClick={logOut}
+                onClick={handleLogout}
                 className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               >
                 <FontAwesomeIcon

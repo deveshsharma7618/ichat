@@ -1,11 +1,12 @@
 "use client";
-import { Playfair_Display, Space_Grotesk } from "next/font/google";
-import { useSession } from "next-auth/react";
+import { Space_Grotesk } from "next/font/google";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import AddFriendModal from "@/app/components/AddFriendModal";
+import { getStoredUser, useClientAuth } from "@/lib/client-auth";
+import Sidebar from "@/app/components/chat/Sidebar";
+import ConversationPane from "@/app/components/chat/ConversationPane";
+import LoadingSpinner from "@/app/components/shared/LoadingSpinner";
 
-const display = Playfair_Display({ subsets: ["latin"], weight: ["600"] });
 const grotesk = Space_Grotesk({ subsets: ["latin"], weight: ["400", "600"] });
 
 interface Friend {
@@ -18,48 +19,35 @@ interface Friend {
   time?: string;
   last?: string;
   unread?: number;
+  selected?: boolean;
+}
+
+interface Message {
+  sender: string;
+  recipient: string;
+  content: string;
+  timestamp: string;
 }
 
 export default function ChatPage() {
-  const { status } = useSession();
-  const router = useRouter();
+  const { isLoading, isAuthenticated, user: authUser, token } = useClientAuth({ requireAuth: true });
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [isMounted, setIsMounted] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
+  const [messageInput, setMessageInput] = useState("");
+  const [user, setUser] = useState<any>(null);
 
-  // First effect: set mounted flag
+  // Fetch friends after user is authenticated
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Second effect: handle authentication and fetch friends
-  useEffect(() => {
-    // Only run after component is mounted
-    if (!isMounted) return;
-
-    // Protect localStorage access - only on client side
-    let user: any = null;
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        user = JSON.parse(userStr);
-      }
-    } catch (e) {
-      console.error("Error parsing user from localStorage:", e);
-    }
-
-    // Redirect only if no valid user found
-    if (!user || !user.email) {
-      console.log("User is unauthenticated, redirecting to home...");
-      router.push("/");
+    if (isLoading || !isAuthenticated || !authUser?.email) {
       return;
     }
 
-    // Get token from localStorage or user object
-    const token = localStorage.getItem("token");
-    const accessToken = user.accessToken;
-    const email = user.email;
+    const accessToken = authUser.accessToken;
+    const email = authUser.email;
+
+    setUser(authUser);
     
     console.log("User authenticated:", { email, hasToken: !!token, hasAccessToken: !!accessToken });
 
@@ -87,7 +75,12 @@ export default function ChatPage() {
             time: "12:00 PM", // Placeholder
             last: "Hey! How are you?", // Placeholder
             unread: 0, // Placeholder
+            selected : false
           }));
+          if (friendsList.length > 0) {
+            friendsList[0].selected = true;
+            setActiveFriend(friendsList[0]);
+          }
           setFriends(friendsList);
           // Store friends in localStorage for later use
           localStorage.setItem("friends", JSON.stringify(friendsList));
@@ -103,15 +96,117 @@ export default function ChatPage() {
     };
 
     fetchFriends();
-  }, [isMounted, router]);
+  }, [isLoading, isAuthenticated, authUser, token]);
 
-  if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
-      </div>
-    );
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
   }
+
+  const sendMessage = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    console.log("Send message clicked");
+    const currentUser = getStoredUser() || authUser;
+    if (!currentUser || !currentUser.email) {
+      console.error("No user found in localStorage");
+      return;
+    }
+
+    if (!activeFriend) {
+      console.error("No active friend selected");
+      return;
+    }
+    console.log(token, currentUser.accessToken);
+
+    const newMessage = {
+      email : currentUser.email,
+      token : currentUser.accessToken || token,
+      friendEmail : activeFriend.email,
+      message: messageInput,
+    };
+    console.log("Sending message:", newMessage);
+
+    const response = await fetch("/api/send-message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newMessage),
+    })
+    const data = await response.json();
+    if (response.ok) {
+      console.log("Message sent successfully:", data);
+      // Clear input field
+      setMessageInput("");
+      const messageToAdd: Message = {
+        sender: currentUser.email,
+        recipient: activeFriend.email,
+        content: messageInput,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prevMessages) => [...prevMessages, messageToAdd]);
+    }else{
+      console.error("Failed to send message:", data.error);
+    }
+
+  }
+
+  const getChats = async () => {
+    const currentUser = getStoredUser() || authUser;
+    if (!currentUser || !currentUser.email) {
+      console.error("No user found in localStorage");
+      return;
+    }
+
+    const response = await fetch("/api/get-chats", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        email: currentUser.email,
+        token: currentUser.accessToken || token,
+        friendEmail: activeFriend?.email || ""
+        }),
+    });
+    const data = await response.json();
+    console.log("Fetched chats:", data);
+    if (response.ok) {
+      console.log("Fetched chats successfully:", data);
+      // Map API response to Message format
+      const fetchedMessages: Message[] = data.chats.map((chat: any) => ({
+        sender: chat.sender_email,
+        recipient: chat.recipient_email,
+        content: chat.message,
+        timestamp: chat.sendAt,
+      }));
+
+      const sortedMessages = fetchedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      setMessages(sortedMessages);
+    } else {
+      console.error("Failed to fetch chats:", data.error);
+    }
+  }
+
+  useEffect(() => {
+    if (activeFriend) {
+      getChats();
+    }
+  }, [activeFriend]);
+
+  if (isLoading) {
+    return <LoadingSpinner text="Loading chat..." />;
+  }
+
+  const handleFriendSelect = (friend: Friend) => {
+    setFriends((prevFriends) =>
+      prevFriends.map((f) => ({
+        ...f,
+        selected: f.email === friend.email,
+      }))
+    );
+    setActiveFriend(friend);
+  };
+
 
   return (
     <main className={`chat-shell ${grotesk.className}`}>
@@ -119,122 +214,20 @@ export default function ChatPage() {
       <div className="ambient b" />
 
       <section className="chat-card">
-        <aside className="sidebar">
-          <div className="sidebar-head">
-            <div>
-              <p className="eyebrow">Messages</p>
-              <h1 className={`title ${display.className}`}>Pulse Chat</h1>
-            </div>
-            <button
-              className="new-chat"
-              type="button"
-              aria-label="Add friend"
-              onClick={() => setIsAddFriendModalOpen(true)}
-            >
-              +
-            </button>
-          </div>
+        <Sidebar
+          friends={friends}
+          onAddFriend={() => setIsAddFriendModalOpen(true)}
+          onFriendSelect={handleFriendSelect}
+        />
 
-          <div className="search">
-            <span className="search-icon">⌕</span>
-            <input
-              type="text"
-              placeholder="Search conversations"
-              aria-label="Search conversations"
-            />
-          </div>
-
-          <div className="section-label">Pinned</div>
-          <ul className="conversation-list">
-            {friends.map((item, index) => (
-              <li
-                key={index}
-                className={`conversation ${index === 0 ? "active" : ""}`}
-              >
-                <div className="avatar">
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <span className="text-sm">{item.name.charAt(0)}</span>
-                  )}
-                </div>
-                <div className="meta">
-                  <div className="row">
-                    <span className="name">{item.name}</span>
-                    <span className="time">{item.time}</span>
-                  </div>
-                  <div className="row">
-                    <span className="preview">{item.last}</span>
-                    {item.unread > 0 && (
-                      <span className="badge">{item.unread}</span>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <div className="status-card">
-            <div>
-              <p className="status-title">Daily rhythm</p>
-              <p className="status-copy">
-                You are replying faster than 78% of your week.
-              </p>
-            </div>
-            <button type="button" className="status-cta">
-              View insights
-            </button>
-          </div>
-        </aside>
-
-        <section className="conversation-pane">
-          <header className="pane-head">
-            <div>
-              <p className="eyebrow">Active chat</p>
-              <h2 className={`pane-title ${display.className}`}>Ari Rocha</h2>
-            </div>
-            <div className="pane-actions">
-              <button type="button">Call</button>
-              <button type="button" className="ghost">
-                Details
-              </button>
-            </div>
-          </header>
-
-          <div className="message-stream">
-            <div className="date-chip">Today</div>
-            {/* {messages.map((msg) => (
-							<div
-								key={msg.id}
-								className={`message ${msg.from === "me" ? "from-me" : ""}`}
-							>
-								<div className="bubble">
-									<p>{msg.text}</p>
-									<span className="timestamp">{msg.time}</span>
-								</div>
-							</div>
-						))} */}
-          </div>
-
-          <form className="composer">
-            <div className="composer-tools">
-              <button type="button" aria-label="Attach">
-                +
-              </button>
-              <button type="button" aria-label="Record voice">
-                ▣
-              </button>
-            </div>
-            <input
-              type="text"
-              placeholder="Write a message..."
-              aria-label="Message"
-            />
-            <button type="submit" className="send">
-              Send
-            </button>
-          </form>
-        </section>
+        <ConversationPane
+          activeFriend={activeFriend}
+          messages={messages}
+          messageInput={messageInput}
+          currentUserEmail={user?.email || ""}
+          onMessageInputChange={handleMessageInputChange}
+          onSendMessage={sendMessage}
+        />
       </section>
 
       <style jsx>{`

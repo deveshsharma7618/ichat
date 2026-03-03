@@ -1,65 +1,36 @@
 "use client";
-import {
-  faGithub,
-  faGoogle,
-  faInstagram,
-} from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
+import { useClientAuth } from "@/lib/client-auth";
+import LoginForm from "@/app/components/auth/LoginForm";
+import OAuthButtons from "@/app/components/auth/OAuthButtons";
+import LoadingSpinner from "@/app/components/shared/LoadingSpinner";
 
 export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { data: session, status } = useSession();
+  const { user, isLoading, isAuthenticated } = useClientAuth();
   const [hasRedirected, setHasRedirected] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Only run after component is mounted to avoid hydration mismatch
-    if (!isMounted) return;
-
-    // Only redirect if user is authenticated and we haven't already redirected
-    if (status === 'authenticated' && session?.user && !hasRedirected) {
-      console.log("User is authenticated:", session.user);
-      const user = JSON.stringify(session.user);
-      console.log("Storing user in localStorage:", user);
-      localStorage.setItem("user", user);
-      setHasRedirected(true);
-      window.location.href = "/chat"; // Redirect to chat page
+    if (isLoading || hasRedirected) {
       return;
     }
 
-    // Only check localStorage if not authenticated and haven't redirected yet
-    if (status !== 'authenticated' && !hasRedirected) {
-      try {
-        const userStr = localStorage.getItem("user");
-        if (userStr) {
-          const user = JSON.parse(userStr);
-          if (user && user.email) {
-            console.log("User found in localStorage, redirecting to chat...");
-            setHasRedirected(true);
-            window.location.href = "/chat";
-          }
-        }
-      } catch (e) {
-        console.error("Error parsing localStorage:", e);
-      }
+    if (isAuthenticated && user?.email) {
+      console.log("User is authenticated:", user);
+      setHasRedirected(true);
+      window.location.href = "/chat"; // Redirect to chat page
     }
-    
-  }, [isMounted, session, status, hasRedirected]);
+  }, [isLoading, isAuthenticated, user, hasRedirected]);
 
-  if (status === 'loading') {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (isLoading) {
+    return <LoadingSpinner text="Loading..." />;
   }
 
-  if (status === 'authenticated') {
-    return <div className="flex items-center justify-center min-h-screen">Redirecting...</div>;
+  if (isAuthenticated) {
+    return <LoadingSpinner text="Redirecting..." />;
   }
 
   const handleGoogleSignIn = async () => {
@@ -103,9 +74,14 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         console.log("Login response:", data);
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        window.location.href = "/chat"; // Redirect to chat page after successful login
+
+        if (data.user && data.token) {
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("user", JSON.stringify(data.user));
+          window.location.href = "/chat"; // Redirect to chat page after successful login
+        } else {
+          console.error("Login failed:", data.error || "Unknown error");
+        }
       })
       .catch((error) => {
         console.error("Login error:", error);
@@ -125,72 +101,13 @@ export default function Home() {
           </p>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              id="email"
-              placeholder="Enter your email"
-              className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
-              required
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              id="password"
-              placeholder="Enter your password"
-              className="border border-gray-300 dark:border-gray-600 p-3 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition"
-              required
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label
-                htmlFor="remember"
-                className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
-              >
-                Remember me
-              </label>
-            </div>
-            <Link
-              href="/forgot-password"
-              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              Forgot password?
-            </Link>
-          </div>
-
-          <button
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold p-3 rounded-lg w-full transition duration-200 transform hover:scale-[1.02]"
-          >
-            Sign In
-          </button>
-        </form>
+        <LoginForm
+          email={email}
+          password={password}
+          onEmailChange={setEmail}
+          onPasswordChange={setPassword}
+          onSubmit={handleSubmit}
+        />
 
         <div className="mt-6 text-center">
           <p className="text-gray-600 dark:text-gray-400">
@@ -204,23 +121,10 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="mt-4 text-center flex flex-col items-center gap-3">
-          <button onClick={handleGoogleSignIn} className="bg-blue-600 p-4 w-full rounded-lg flex items-center justify-center hover:bg-blue-700 transition duration-200 transform hover:scale-[1.02] cursor-pointer">
-            <FontAwesomeIcon icon={faGoogle} className="w-5 h-5 mr-2" />
-            Continue with Google
-          </button>
-          <button
-            onClick={handleGithubSignIn}
-            className="ml-2 bg-gray-800 p-4 w-full rounded-lg flex items-center justify-center hover:bg-gray-700 transition duration-200 transform hover:scale-[1.02] cursor-pointer"
-          >
-            <FontAwesomeIcon icon={faGithub} className="w-5 h-5 mr-2" />
-            Continue with Github
-          </button>
-          <button className="ml-2 bg-pink-600 p-4 w-full rounded-lg flex items-center justify-center hover:bg-pink-700 transition duration-200 transform hover:scale-[1.02] cursor-pointer">
-            <FontAwesomeIcon icon={faInstagram} className="w-5 h-5 mr-2" />
-            Continue with Instagram
-          </button>
-        </div>
+        <OAuthButtons
+          onGoogleSignIn={handleGoogleSignIn}
+          onGithubSignIn={handleGithubSignIn}
+        />
       </div>
     </main>
   );

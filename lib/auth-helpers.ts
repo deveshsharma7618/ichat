@@ -11,6 +11,14 @@ export async function getCurrentUserSession() {
 }
 
 /**
+ * Get authenticated user's email from server session
+ */
+export async function getAuthenticatedUserEmail() {
+  const session = await getCurrentUserSession();
+  return session?.user?.email ?? null;
+}
+
+/**
  * Get user data from database with tokens
  */
 export async function getUserWithTokens(email: string) {
