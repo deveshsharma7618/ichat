@@ -31,6 +31,8 @@ interface ConversationPaneProps {
   currentUserEmail: string;
   onMessageInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSendMessage: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  isTyping?: boolean;
+  isFriendOnline?: boolean;
 }
 
 export default function ConversationPane({
@@ -40,6 +42,8 @@ export default function ConversationPane({
   currentUserEmail,
   onMessageInputChange,
   onSendMessage,
+  isTyping = false,
+  isFriendOnline = false,
 }: ConversationPaneProps) {
   return (
     <section className="conversation-pane">
@@ -58,9 +62,16 @@ export default function ConversationPane({
               {activeFriend?.name ? activeFriend.name.charAt(0) : "?"}
             </span>
           )}
-          <h2 className={`pane-title ${display.className}`}>
-            {activeFriend?.name || "Select a friend"}
-          </h2>
+          <div className="flex flex-col">
+            <h2 className={`pane-title ${display.className}`}>
+              {activeFriend?.name || "Select a friend"}
+            </h2>
+            {activeFriend && (
+              <span className="text-xs" style={{ color: isFriendOnline ? '#4ade80' : '#94a3b8' }}>
+                {isFriendOnline ? '🟢 Online' : '⚫ Offline'}
+              </span>
+            )}
+          </div>
         </div>
         <div className="pane-actions">
           <button type="button">Call</button>
@@ -79,6 +90,15 @@ export default function ConversationPane({
             isOutgoing={msg.sender === currentUserEmail}
           />
         ))}
+        {isTyping && (
+          <div className="message-bubble incoming">
+            <div className="typing-indicator">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        )}
       </div>
 
       <MessageInput

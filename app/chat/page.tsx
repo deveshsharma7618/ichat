@@ -1,11 +1,12 @@
 "use client";
 import { Space_Grotesk } from "next/font/google";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import AddFriendModal from "@/app/components/AddFriendModal";
 import { getStoredUser, useClientAuth } from "@/lib/client-auth";
 import Sidebar from "@/app/components/chat/Sidebar";
 import ConversationPane from "@/app/components/chat/ConversationPane";
 import LoadingSpinner from "@/app/components/shared/LoadingSpinner";
+import { SocketProvider, useSocket } from "@/lib/socket-context";
 
 const grotesk = Space_Grotesk({ subsets: ["latin"], weight: ["400", "600"] });
 
@@ -29,7 +30,7 @@ interface Message {
   timestamp: string;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const { isLoading, isAuthenticated, user: authUser, token } = useClientAuth({ requireAuth: true });
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
@@ -37,6 +38,11 @@ export default function ChatPage() {
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [user, setUser] = useState<any>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Get socket context
+  const { socket, isConnected, onlineUsers, joinConversation, leaveConversation, sendMessage: socketSendMessage, emitTyping, emitStopTyping } = useSocket();
 
   // Fetch friends after user is authenticated
   useEffect(() => {
@@ -100,6 +106,22 @@ export default function ChatPage() {
 
   const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageInput(e.target.value);
+    
+    // Emit typing indicator only if socket is connected
+    if (activeFriend && user?.email && isConnected) {
+      const conversationId = [user.email, activeFriend.email].sort().join('_');
+      emitTyping(conversationId, user.email);
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 1 second of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        emitStopTyping(conversationId, user.email);
+      }, 1000);
+    }
   }
 
   const sendMessage = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -115,6 +137,11 @@ export default function ChatPage() {
       console.error("No active friend selected");
       return;
     }
+
+    if (!messageInput.trim()) {
+      return;
+    }
+
     console.log(token, currentUser.accessToken);
 
     const newMessage = {
@@ -125,6 +152,29 @@ export default function ChatPage() {
     };
     console.log("Sending message:", newMessage);
 
+    // Send via Socket.io for real-time delivery (if connected)
+    if (isConnected) {
+      const messageForSocket: Message = {
+        sender: currentUser.email,
+        recipient: activeFriend.email,
+        content: messageInput,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Stop typing indicator
+      if (user?.email) {
+        const conversationId = [user.email, activeFriend.email].sort().join('_');
+        emitStopTyping(conversationId, user.email);
+      }
+
+      // Send via socket immediately
+      socketSendMessage(messageForSocket);
+    }
+
+    // Clear input field immediately for better UX
+    setMessageInput("");
+
+    // Also save to database via API
     const response = await fetch("/api/send-message", {
       method: "POST",
       headers: {
@@ -133,17 +183,18 @@ export default function ChatPage() {
       body: JSON.stringify(newMessage),
     })
     const data = await response.json();
+      // If socket is not connected, add message to UI manually
+      if (!isConnected) {
+        const messageToAdd: Message = {
+          sender: currentUser.email,
+          recipient: activeFriend.email,
+          content: messageInput,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prevMessages) => [...prevMessages, messageToAdd]);
+      }
     if (response.ok) {
       console.log("Message sent successfully:", data);
-      // Clear input field
-      setMessageInput("");
-      const messageToAdd: Message = {
-        sender: currentUser.email,
-        recipient: activeFriend.email,
-        content: messageInput,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prevMessages) => [...prevMessages, messageToAdd]);
     }else{
       console.error("Failed to send message:", data.error);
     }
@@ -187,6 +238,54 @@ export default function ChatPage() {
     }
   }
 
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket || !activeFriend || !user?.email) return;
+
+    // Only set up socket listeners if connected
+    if (!isConnected) {
+      console.log('Socket not connected, skipping real-time features');
+      return;
+    }
+
+    const conversationId = [user.email, activeFriend.email].sort().join('_');
+
+    // Join the conversation room
+    joinConversation(conversationId);
+
+    // Listen for incoming messages
+    const handleReceiveMessage = (message: Message) => {
+      console.log("📩 Received message:", message);
+      setMessages((prev) => {
+        // Avoid duplicates
+        const exists = prev.some(
+          (msg) => msg.content === message.content && 
+          msg.timestamp === message.timestamp &&
+          msg.sender === message.sender
+        );
+        if (exists) return prev;
+        return [...prev, message];
+      });
+    };
+
+    // Listen for typing indicator
+    const handleUserTyping = ({ userId, isTyping: typing }: { userId: string; isTyping: boolean }) => {
+      if (userId !== user.email) {
+        setIsTyping(typing);
+      }
+    };
+
+    socket.on('receive-message', handleReceiveMessage);
+    socket.on('user-typing', handleUserTyping);
+
+    // Cleanup
+    return () => {
+      socket.off('receive-message', handleReceiveMessage);
+      socket.off('user-typing', handleUserTyping);
+      leaveConversation(conversationId);
+    };
+  }, [socket, activeFriend, user, joinConversation, leaveConversation, isConnected]);
+
   useEffect(() => {
     if (activeFriend) {
       getChats();
@@ -206,6 +305,9 @@ export default function ChatPage() {
     );
     setActiveFriend(friend);
   };
+
+  // Check if active friend is online
+  const isFriendOnline = activeFriend?.email ? onlineUsers.has(activeFriend.email) : false;
 
 
   return (
@@ -227,6 +329,8 @@ export default function ChatPage() {
           currentUserEmail={user?.email || ""}
           onMessageInputChange={handleMessageInputChange}
           onSendMessage={sendMessage}
+          isTyping={isTyping}
+          isFriendOnline={isFriendOnline}
         />
       </section>
 
@@ -297,5 +401,16 @@ export default function ChatPage() {
         }}
       />
     </main>
+  );
+}
+
+// Wrapper component that provides Socket context
+export default function ChatPage() {
+  const { user } = useClientAuth({ requireAuth: true });
+  
+  return (
+    <SocketProvider userId={user?.email || ''}>
+      <ChatPageContent />
+    </SocketProvider>
   );
 }

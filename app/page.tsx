@@ -46,8 +46,6 @@ export default function Home() {
     }
   };
 
-
-
   const handleGithubSignIn = async () => {
     try {
       await signIn("github", {
