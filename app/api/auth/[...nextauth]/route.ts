@@ -128,7 +128,6 @@ export const AUTH_OPTIONS: NextAuthOptions = {
           );
         }
 
-        console.log("User signed in:", user?.email, "via", account?.provider);
         return true;
       } catch (error) {
         console.error("Error during sign in:", error);
@@ -146,10 +145,8 @@ export const AUTH_OPTIONS: NextAuthOptions = {
 
   events: {
     async signIn({ user, account }: { user?: any; account?: Account | null }) {
-      console.log(`User ${user?.email} signed in with ${account?.provider}`);
     },
     async signOut() {
-      console.log("User signed out");
     },
   },
 };

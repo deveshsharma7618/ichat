@@ -62,7 +62,6 @@ export default function AddFriendModal({
 				}
 
 				const data = (await response.json()) as SearchResponse | User[];
-				console.log("Search results:", data);
 				const users = Array.isArray(data) ? data : data.users;
 				const safeUsers = Array.isArray(users)
 					? users.filter((user) => user.email?.toLowerCase() !== currentUserEmail.toLowerCase())
@@ -83,7 +82,6 @@ export default function AddFriendModal({
 
 	const handleAddFriend = async (friendEmail: string) => {
 		setAddingFriendEmail(friendEmail);
-        console.log("Adding friend with email:", friendEmail);
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         const email = user.email;
         const name = user.name;
@@ -111,7 +109,6 @@ export default function AddFriendModal({
 				return;
 			}
 
-			console.log("Friend added successfully:", data);
 
 			// Remove the added friend from suggestions
 			setSuggestions((prev) => prev.filter((user) => user.email !== friendEmail));

@@ -5,7 +5,6 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { email, token, friendEmail } = body;
-        console.log(email, token, friendEmail);
         if (!email) {
             return NextResponse.json(
                 { error: 'Email is required' },
@@ -16,7 +15,6 @@ export async function POST(request: NextRequest) {
         const db = client.db('ichat');
         const user = await db.collection('users').findOne({ email: email.toLowerCase(), accessToken: token });
         const userUsingCreditionals = await db.collection('users').findOne({ email: email.toLowerCase(), password: token });
-        console.log(email, token, friendEmail);
         if (!user && !userUsingCreditionals) {
             return NextResponse.json(
                 { error: 'User not found or invalid token' },
@@ -24,13 +22,10 @@ export async function POST(request: NextRequest) {
             );
         }
         const chatsData = await db.collection('chats').find({ email: email.toLowerCase(), friendEmail: friendEmail.toLowerCase()});
-        console.log(chatsData);
         const chatsArray = await chatsData.toArray();
-        console.log(chatsArray);
         const allMessages = chatsArray.reduce((acc, chat) => {
             return acc.concat(chat.messages);
         }, []);
-        console.log(allMessages);
          return NextResponse.json(
             { chats: allMessages },
             { status: 200 }

@@ -32,7 +32,6 @@ export default function SignUp() {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          console.log('Token found, redirecting to chat...');
           setHasRedirected(true);
           // window.location.href = '/chat'; // Redirect to chat page if token exists
           return;
@@ -44,10 +43,8 @@ export default function SignUp() {
       // Check for session
       try {
         const session = await getSession();
-        console.log('Current session:', session);
         const user = session?.user;
         if (user) {
-          console.log('User is authenticated via session:', user);
           localStorage.setItem('user', JSON.stringify(user));
           setHasRedirected(true);
           window.location.href = '/chat'; // Redirect to chat page if session exists

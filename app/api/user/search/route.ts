@@ -36,8 +36,6 @@ export async function GET(request: NextRequest) {
         }
         return true;
     });
-    console.log("Search results:", filteredUsers);
-    console.log("Already added friends:", alreadyAddedFriends);
     return NextResponse.json(
       { users: filteredUsers, alreadyAddedFriends },
       { status: 200 },

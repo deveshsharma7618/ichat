@@ -39,6 +39,7 @@ function ChatPageContent() {
   const [messageInput, setMessageInput] = useState("");
   const [user, setUser] = useState<any>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Get socket context
@@ -55,7 +56,6 @@ function ChatPageContent() {
 
     setUser(authUser);
     
-    console.log("User authenticated:", { email, hasToken: !!token, hasAccessToken: !!accessToken });
 
     const fetchFriends = async () => {
       try {
@@ -72,7 +72,6 @@ function ChatPageContent() {
         });
 
         const data = await response.json();
-        console.log("Fetched friends from API:", data);
         
         if (response.ok && data.friends) {
           // Map friends data to include dummy data for now
@@ -91,7 +90,6 @@ function ChatPageContent() {
           // Store friends in localStorage for later use
           localStorage.setItem("friends", JSON.stringify(friendsList));
         } else {
-          console.log("Failed to fetch friends:", data.error);
           setFriends([]);
         }
       } catch (error) {
@@ -126,7 +124,6 @@ function ChatPageContent() {
 
   const sendMessage = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    console.log("Send message clicked");
     const currentUser = getStoredUser() || authUser;
     if (!currentUser || !currentUser.email) {
       console.error("No user found in localStorage");
@@ -142,7 +139,6 @@ function ChatPageContent() {
       return;
     }
 
-    console.log(token, currentUser.accessToken);
 
     const newMessage = {
       email : currentUser.email,
@@ -150,7 +146,6 @@ function ChatPageContent() {
       friendEmail : activeFriend.email,
       message: messageInput,
     };
-    console.log("Sending message:", newMessage);
 
     // Send via Socket.io for real-time delivery (if connected)
     if (isConnected) {
@@ -194,7 +189,6 @@ function ChatPageContent() {
         setMessages((prevMessages) => [...prevMessages, messageToAdd]);
       }
     if (response.ok) {
-      console.log("Message sent successfully:", data);
     }else{
       console.error("Failed to send message:", data.error);
     }
@@ -220,9 +214,7 @@ function ChatPageContent() {
         }),
     });
     const data = await response.json();
-    console.log("Fetched chats:", data);
     if (response.ok) {
-      console.log("Fetched chats successfully:", data);
       // Map API response to Message format
       const fetchedMessages: Message[] = data.chats.map((chat: any) => ({
         sender: chat.sender_email,
@@ -244,7 +236,6 @@ function ChatPageContent() {
 
     // Only set up socket listeners if connected
     if (!isConnected) {
-      console.log('Socket not connected, skipping real-time features');
       return;
     }
 
@@ -255,7 +246,6 @@ function ChatPageContent() {
 
     // Listen for incoming messages
     const handleReceiveMessage = (message: Message) => {
-      console.log("📩 Received message:", message);
       setMessages((prev) => {
         // Avoid duplicates
         const exists = prev.some(
@@ -315,23 +305,44 @@ function ChatPageContent() {
       <div className="ambient a" />
       <div className="ambient b" />
 
-      <section className="chat-card">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <section className={`chat-card ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <Sidebar
           friends={friends}
           onAddFriend={() => setIsAddFriendModalOpen(true)}
-          onFriendSelect={handleFriendSelect}
+          onFriendSelect={(friend) => {
+            handleFriendSelect(friend);
+            setSidebarOpen(false);
+          }}
         />
 
-        <ConversationPane
-          activeFriend={activeFriend}
-          messages={messages}
-          messageInput={messageInput}
-          currentUserEmail={user?.email || ""}
-          onMessageInputChange={handleMessageInputChange}
-          onSendMessage={sendMessage}
-          isTyping={isTyping}
-          isFriendOnline={isFriendOnline}
-        />
+        <div className="conversation-wrapper">
+          <button
+            className="sidebar-toggle md:hidden"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle sidebar"
+          >
+            ☰
+          </button>
+
+          <ConversationPane
+            activeFriend={activeFriend}
+            messages={messages}
+            messageInput={messageInput}
+            currentUserEmail={user?.email || ""}
+            onMessageInputChange={handleMessageInputChange}
+            onSendMessage={sendMessage}
+            isTyping={isTyping}
+            isFriendOnline={isFriendOnline}
+          />
+        </div>
       </section>
 
       <style jsx>{`

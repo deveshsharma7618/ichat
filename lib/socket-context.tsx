@@ -64,7 +64,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, userId
     });
 
     socketInstance.on('connect', () => {
-      console.log('✅ Socket connected:', socketInstance.id);
       setIsConnected(true);
       
       // Emit user online status if userId is available
@@ -74,7 +73,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children, userId
     });
 
     socketInstance.on('disconnect', () => {
-      console.log('🔴 Socket disconnected');
       setIsConnected(false);
     });
 

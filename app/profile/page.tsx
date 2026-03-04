@@ -48,7 +48,6 @@ export default function Profile() {
     };
     setProfileData(newProfileData);
     setFormData(newProfileData);
-    console.log('User data from auth hook:', user);
   }, [user]);
 
   // Sync formData with profileData whenever profileData changes

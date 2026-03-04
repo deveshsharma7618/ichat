@@ -73,6 +73,10 @@ body {
   flex-direction: column;
   gap: 20px;
   background: rgba(17, 18, 24, 0.7);
+  position: static;
+  width: auto;
+  transform: none;
+  height: auto;
 }
 
 .sidebar-head {
@@ -250,6 +254,12 @@ body {
   height: 80vh;
 }
 
+.conversation-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .pane-head {
   display: flex;
   justify-content: space-between;
@@ -405,6 +415,15 @@ body {
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 900px) {
   .chat-card {
     grid-template-columns: 1fr;
@@ -413,20 +432,240 @@ body {
   .sidebar {
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: static;
+    width: auto;
+    max-width: none;
+    transform: none;
+    box-shadow: none;
+    z-index: auto;
+  }
+
+  .sidebar-toggle {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: none;
+  }
+
+  .conversation-wrapper {
+    width: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-shell {
+    padding: 20px 12px 50px;
+    min-height: calc(100vh - 64px);
+  }
+
+  .chat-card {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+    max-width: 100%;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 64px;
+    bottom: 0;
+    width: 400px;
+    max-width: 85vw;
+    background: rgba(15, 16, 22, 0.95) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: none;
+    z-index: 45;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-out;
+    overflow-y: auto;
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.5);
+  }
+
+  .chat-card.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 30;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 8px;
+    color: #f7f2ea;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: background 0.2s ease;
+    margin-bottom: 12px;
+  }
+
+  .sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .conversation-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .conversation-pane {
+    padding: 16px;
+    gap: 16px;
+    height: 80vh;
+  }
+
+  .pane-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .pane-actions {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .pane-actions button {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  .pane-title {
+    font-size: 1.1rem;
+  }
+
+  .sidebar-head {
+    margin-bottom: 4px;
+  }
+
+  .title {
+    font-size: 1.4rem;
+  }
+
+  .eyebrow {
+    font-size: 0.6rem;
+  }
+
+  .message-stream {
+    padding: 8px 0;
+    gap: 12px;
+  }
+
+  .message.incoming .message-content {
+    max-width: 80%;
+  }
+
+  .message.outgoing .message-content {
+    max-width: 80%;
+  }
+
+  .bubble {
+    max-width: 90%;
   }
 }
 
 @media (max-width: 600px) {
   .chat-shell {
-    padding: 24px 14px 40px;
+    padding: 16px 8px 48px;
+  }
+
+  .chat-card {
+    border-radius: 16px;
+    max-height: 85vh;
+  }
+
+  .sidebar {
+    width: 75vw;
+    padding: 20px 16px;
   }
 
   .conversation-pane {
-    padding: 20px;
+    padding: 12px;
+    gap: 12px;
+    height: 70vh;
+  }
+
+  .search {
+    margin-bottom: 8px;
+  }
+
+  .search input {
+    font-size: 0.9rem;
+    padding: 6px 8px 6px 28px;
+  }
+
+  .pane-title {
+    font-size: 1rem;
+  }
+
+  .title {
+    font-size: 1.2rem;
+  }
+
+  .pane-actions button {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+
+  .message-stream {
+    padding: 6px 0;
+    gap: 10px;
+  }
+
+  .message-content {
+    font-size: 0.9rem;
+  }
+
+  .conversation-list {
+    gap: 8px;
   }
 
   .bubble {
+    max-width: 90%;
+  }
+
+  .message.incoming .message-content,
+  .message.outgoing .message-content {
     max-width: 85%;
+    padding: 10px 12px;
+  }
+
+  .composer {
+    padding: 8px 0;
+    gap: 6px;
+  }
+
+  .composer input {
+    font-size: 0.9rem;
+    padding: 8px 10px;
+  }
+
+  .composer-tools {
+    gap: 4px;
+  }
+
+  .composer-tools button {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .composer .send {
+    padding: 8px 12px;
+    font-size: 0.8rem;
   }
 }
 

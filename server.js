@@ -34,12 +34,10 @@ app.prepare().then(() => {
   const onlineUsers = new Map();
 
   io.on('connection', (socket) => {
-    console.log('🔌 User connected:', socket.id);
 
     // User comes online
     socket.on('user-online', (userId) => {
       onlineUsers.set(userId, socket.id);
-      console.log(`✅ User ${userId} is online`);
       
       // Broadcast online status to all clients
       io.emit('user-status', { 
@@ -51,20 +49,17 @@ app.prepare().then(() => {
     // Join a conversation room (identified by sorted emails)
     socket.on('join-conversation', (conversationId) => {
       socket.join(conversationId);
-      console.log(`💬 Socket ${socket.id} joined conversation ${conversationId}`);
     });
 
     // Leave a conversation room
     socket.on('leave-conversation', (conversationId) => {
       socket.leave(conversationId);
-      console.log(`👋 Socket ${socket.id} left conversation ${conversationId}`);
     });
 
     // Send message - broadcast to conversation room
     socket.on('send-message', (data) => {
       const { conversationId, sender, recipient, content, timestamp } = data;
       
-      console.log(`📨 Message from ${sender} to ${recipient}`);
       
       // Broadcast to everyone in the conversation room (including sender)
       io.to(conversationId).emit('receive-message', {
@@ -115,7 +110,6 @@ app.prepare().then(() => {
 
     // Handle disconnect
     socket.on('disconnect', () => {
-      console.log('🔴 User disconnected:', socket.id);
       
       // Find and remove user from online users
       for (let [userId, socketId] of onlineUsers.entries()) {
@@ -125,7 +119,6 @@ app.prepare().then(() => {
             userId, 
             status: 'offline' 
           });
-          console.log(`⚫ User ${userId} is offline`);
           break;
         }
       }
@@ -138,7 +131,5 @@ app.prepare().then(() => {
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`🚀 Ready on http://${hostname}:${port}`);
-      console.log(`📡 Socket.io server running`);
     });
 });

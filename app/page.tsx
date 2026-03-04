@@ -19,7 +19,6 @@ export default function Home() {
     }
 
     if (isAuthenticated && user?.email) {
-      console.log("User is authenticated:", user);
       setHasRedirected(true);
       window.location.href = "/chat"; // Redirect to chat page
     }
@@ -71,7 +70,6 @@ export default function Home() {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("Login response:", data);
 
         if (data.user && data.token) {
           localStorage.setItem("token", data.token);

@@ -15,9 +15,7 @@ export async function POST(request: NextRequest) {
         const db = client.db('ichat');
         const user = await db.collection('users').findOne({ email: email.toLowerCase(), accessToken: token });
         const userUsingCreditionals = await db.collection('users').findOne({ email: email.toLowerCase(), password: token });
-        console.log(email, token, friendEmail, message);
         if (!user && !userUsingCreditionals) {
-            console.log("User not found with token, trying credentials...");
             return NextResponse.json(
                 { error: 'User not found or invalid token' },
                 { status: 404 }
@@ -31,7 +29,6 @@ export async function POST(request: NextRequest) {
                 { status: 404 }
             );
         }
-        console.log(token);
         const chatsData = await db.collection('chats').findOne({ email: email.toLowerCase(), friendEmail: friendEmail.toLowerCase(), token: token });
         if(chatsData){
             await db.collection('chats').updateOne(
