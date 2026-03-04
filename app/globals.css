@@ -488,8 +488,8 @@ body {
   .sidebar-overlay {
     position: fixed;
     inset: 64px 0 0 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 40;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 30;
     animation: fadeIn 0.2s ease-out;
     display: block !important;
   }
