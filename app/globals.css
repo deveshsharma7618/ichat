@@ -470,7 +470,7 @@ body {
     left: 0;
     top: 64px;
     bottom: 0;
-    width: 100vw;
+    width: min(82vw, 360px);
     background: rgba(15, 16, 22, 1) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: none;
@@ -488,10 +488,11 @@ body {
   .sidebar-overlay {
     position: fixed;
     inset: 64px 0 0 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: transparent;
     z-index: 40;
     animation: fadeIn 0.2s ease-out;
     display: block !important;
+    pointer-events: none;
   }
 
   .sidebar-toggle {
@@ -588,7 +589,7 @@ body {
   }
 
   .sidebar {
-    width: 75vw;
+    width: min(82vw, 320px);
     padding: 20px 16px;
   }
 

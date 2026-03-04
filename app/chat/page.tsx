@@ -305,23 +305,16 @@ function ChatPageContent() {
       <div className="ambient a" />
       <div className="ambient b" />
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       <section className={`chat-card ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <Sidebar
-          friends={friends}
-          onAddFriend={() => setIsAddFriendModalOpen(true)}
-          onFriendSelect={(friend) => {
-            handleFriendSelect(friend);
-            setSidebarOpen(false);
-          }}
-        />
+        <div>
+          <Sidebar
+            friends={friends}
+            onAddFriend={() => setIsAddFriendModalOpen(true)}
+            onFriendSelect={(friend) => {
+              handleFriendSelect(friend);
+            }}
+          />
+        </div>
 
         <div className="conversation-wrapper">
           <button
