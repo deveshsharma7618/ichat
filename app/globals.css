@@ -431,7 +431,7 @@ body {
 
   .sidebar {
     border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
     position: static;
     width: auto;
     max-width: none;
@@ -470,9 +470,8 @@ body {
     left: 0;
     top: 64px;
     bottom: 0;
-    width: 400px;
-    max-width: 85vw;
-    background: rgba(15, 16, 22, 0.95) !important;
+    width: 100vw;
+    background: rgba(15, 16, 22, 1) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     border-bottom: none;
     z-index: 45;
@@ -489,9 +488,10 @@ body {
   .sidebar-overlay {
     position: fixed;
     inset: 64px 0 0 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 30;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 40;
     animation: fadeIn 0.2s ease-out;
+    display: block !important;
   }
 
   .sidebar-toggle {
