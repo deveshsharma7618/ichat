@@ -65,7 +65,26 @@ export default function Profile() {
     setPasswordData({ ...passwordData, [name]: value });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const { name, email } = formData;
+
+    const accessToken = userData?.accessToken || localStorage.getItem('token');
+
+    const response = await fetch('/api/user/change-name', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ newName: name, email, accessToken }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      return;
+    }
+
+    formData.name = result.newName;
+    formData.avatar = profileData.avatar;
+    console.log("Updated formData:", formData);
     setProfileData(formData);
     setIsEditing(false);
   };

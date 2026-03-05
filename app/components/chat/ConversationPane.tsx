@@ -1,4 +1,5 @@
 import { Playfair_Display } from "next/font/google";
+import { useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
 
@@ -45,6 +46,14 @@ export default function ConversationPane({
   isTyping = false,
   isFriendOnline = false,
 }: ConversationPaneProps) {
+  const messageStreamRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messageStreamRef.current) {
+      messageStreamRef.current.scrollTop = messageStreamRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
   return (
     <section className="conversation-pane">
       <header className="pane-head">
@@ -81,7 +90,7 @@ export default function ConversationPane({
         </div>
       </header>
 
-      <div className="message-stream flex-1 overflow-y-auto p-4">
+      <div className="message-stream flex-1 overflow-y-auto p-4" ref={messageStreamRef}>
         <div className="date-chip">Today</div>
         {messages.map((msg, index) => (
           <MessageBubble
