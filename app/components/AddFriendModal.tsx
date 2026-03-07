@@ -93,9 +93,8 @@ export default function AddFriendModal({
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					token: localStorage.getItem("token"),
 					email: email,
-                    accessToken : user.accessToken || localStorage.getItem("accessToken") || "",
+                    accessToken : localStorage.getItem("accessToken") || "",
 					friendEmail: friendEmail,
 					name: name,
 				}),

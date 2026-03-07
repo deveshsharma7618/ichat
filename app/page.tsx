@@ -71,8 +71,8 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
 
-        if (data.user && data.token) {
-          localStorage.setItem("token", data.token);
+        if (data.user && data.accessToken) {
+          localStorage.setItem("accessToken", data.accessToken);
           localStorage.setItem("user", JSON.stringify(data.user));
           window.location.href = "/chat"; // Redirect to chat page after successful login
         } else {

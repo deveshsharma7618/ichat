@@ -68,7 +68,7 @@ export default function Profile() {
   const handleSave = async () => {
     const { name, email } = formData;
 
-    const accessToken = userData?.accessToken || localStorage.getItem('token');
+    const accessToken = localStorage.getItem('accessToken');
 
     const response = await fetch('/api/user/change-name', {
       method: 'POST',

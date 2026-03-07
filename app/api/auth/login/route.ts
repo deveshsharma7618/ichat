@@ -33,13 +33,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
-    if (!user.password) {
+    if (!user.accessToken) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
-    const isPasswordValid = await userModel.comparePassword(password, user.password);
+    const isPasswordValid = await userModel.comparePassword(password, user.accessToken);
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -61,9 +61,11 @@ export async function POST(request: NextRequest) {
         user: {
           id: user._id!.toString(),
           name: user.name,
+          image : user.image,
+          provider : user.provider,
           email: user.email,
         },
-        token: user.password,
+        accessToken : user.accessToken,
       },
       { status: 200 }
     );

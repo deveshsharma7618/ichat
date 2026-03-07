@@ -49,7 +49,9 @@ export class UserModel {
     const user: User = {
       name,
       email: email.toLowerCase(),
-      password: hashedPassword,
+      accessToken: hashedPassword,
+      image : "", 
+      provider : "credentials",
       createdAt: new Date(),
       updatedAt: new Date(),
     };

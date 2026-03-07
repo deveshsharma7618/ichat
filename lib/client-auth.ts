@@ -61,7 +61,7 @@ export function useClientAuth(options: UseClientAuthOptions = {}) {
 
     const user = getStoredUser();
     setStoredUser(user);
-    setToken(localStorage.getItem("token"));
+    setToken(localStorage.getItem("accessToken") || null);
     setStorageChecked(true);
   }, [isMounted, status, session?.user?.email]);
 
@@ -119,7 +119,7 @@ export function useClientAuth(options: UseClientAuthOptions = {}) {
 export async function handleLogout() {
   // Clear all localStorage items
   localStorage.removeItem("user");
-  localStorage.removeItem("token");
+  localStorage.removeItem("accessToken");
   localStorage.removeItem("friends");
   localStorage.removeItem("userSettings");
   

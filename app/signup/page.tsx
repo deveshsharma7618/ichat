@@ -97,7 +97,7 @@ export default function SignUp() {
       }
 
       // Store token and user data
-      localStorage.setItem('token', data.accessToken);
+      localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('user', JSON.stringify(data.user));
       window.location.href = '/chat';
     } catch (err) {

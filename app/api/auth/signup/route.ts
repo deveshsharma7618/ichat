@@ -70,11 +70,9 @@ export async function POST(request: NextRequest) {
           email: user.email,
           image : user.image || null,
           provider: user.provider || 'credentials',
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
           refreshToken: null, // You can implement refresh token logic if needed
-          
         },
         accessToken: token,
       },

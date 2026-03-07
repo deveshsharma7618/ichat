@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, token, accessToken, friendEmail } = body;
+    const { name, email, accessToken, friendEmail } = body;
 
     // Validation
     if (!email || !friendEmail) {
@@ -42,31 +42,14 @@ export async function POST(request: NextRequest) {
     // Connect to database
     const client = await clientPromise;
     const db = client.db("ichat");
-    if (accessToken) {
-      // Verify access token with Google API
-      const verifyUser = await db
-        .collection("users")
-        .findOne({ email: email.toLowerCase(), accessToken: accessToken });
-      if (!verifyUser) {
-        return NextResponse.json(
-          { error: "Invalid email or token" },
-          { status: 401 },
-        );
-      }
-    } else if (token) {
-      // For credentials-based login, we just check if the user exists
-      const verifyUser = await db
-        .collection("users")
-        .findOne({ email: email.toLowerCase() });
-      if (!verifyUser) {
-        return NextResponse.json(
-          { error: "Invalid email or token" },
-          { status: 401 },
-        );
-      }
-    } else {
+    // Verify access token with Google API
+    const verifyUser = await db
+      .collection("users")
+      .findOne({ email: email.toLowerCase(), accessToken });
+    console.log(email, accessToken);
+    if (!verifyUser) {
       return NextResponse.json(
-        { error: "Token is required" },
+        { error: "Invalid email or token" },
         { status: 401 },
       );
     }
@@ -76,7 +59,7 @@ export async function POST(request: NextRequest) {
       .collection("users")
       .findOne(
         { email: friendEmail.toLowerCase() },
-        { projection: { password: 0, accessToken: 0, refreshToken: 0, tokenExpiry: 0 } }
+        { projection: { accessToken: 0, refreshToken: 0, tokenExpiry: 0 } },
       );
 
     if (!friend) {
@@ -94,9 +77,10 @@ export async function POST(request: NextRequest) {
     // Check if friend is already added
     if (userFriendDoc && userFriendDoc.friends) {
       const alreadyAdded = userFriendDoc.friends.some(
-        (f: any) => f.email && f.email.toLowerCase() === friendEmail.toLowerCase()
+        (f: any) =>
+          f.email && f.email.toLowerCase() === friendEmail.toLowerCase(),
       );
-      
+
       if (alreadyAdded) {
         return NextResponse.json(
           { error: "Friend is already added" },
@@ -140,7 +124,7 @@ export async function POST(request: NextRequest) {
         { email: email.toLowerCase() },
         { $set: { friends: updatedFriends, updatedAt: new Date() } },
       );
-    
+
     return NextResponse.json(
       { message: "Friend added successfully", friend: friendData },
       { status: 200 },

@@ -51,7 +51,7 @@ function ChatPageContent() {
       return;
     }
 
-    const accessToken = authUser.accessToken;
+    const accessToken = localStorage.getItem("accessToken");
     const email = authUser.email;
 
     setUser(authUser);
@@ -66,7 +66,6 @@ function ChatPageContent() {
           },
           body: JSON.stringify({ 
             email, 
-            token: token || "",
             accessToken: accessToken || "" 
           }),
         });
@@ -209,7 +208,7 @@ function ChatPageContent() {
       },
       body: JSON.stringify({ 
         email: currentUser.email,
-        token: currentUser.accessToken || token,
+        accessToken : localStorage.getItem("accessToken"),
         friendEmail: activeFriend?.email || ""
         }),
     });
@@ -361,7 +360,7 @@ function ChatPageContent() {
         onFriendAdded={() => {
           // Refresh friends list from API
           const userStr = localStorage.getItem("user");
-          const tokenStr = localStorage.getItem("token");
+          const tokenStr = localStorage.getItem("accessToken");
           
           if (!userStr) return;
           
@@ -374,7 +373,7 @@ function ChatPageContent() {
           }
           
           const email = user.email;
-          const accessToken = user.accessToken;
+          const accessToken = tokenStr;
           
           fetch("/api/get-friends", {
             method: "POST",
@@ -384,7 +383,6 @@ function ChatPageContent() {
             body: JSON.stringify({ 
               email, 
               accessToken,
-              token: tokenStr || ""
             }),
           })
             .then((res) => res.json())

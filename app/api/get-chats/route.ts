@@ -4,7 +4,7 @@ import clientPromise from "@/lib/mongodb";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { email, token, friendEmail } = body;
+        const { email, accessToken, friendEmail } = body;
         if (!email) {
             return NextResponse.json(
                 { error: 'Email is required' },
@@ -13,9 +13,8 @@ export async function POST(request: NextRequest) {
         }
         const client = await clientPromise;
         const db = client.db('ichat');
-        const user = await db.collection('users').findOne({ email: email.toLowerCase(), accessToken: token });
-        const userUsingCreditionals = await db.collection('users').findOne({ email: email.toLowerCase(), password: token });
-        if (!user && !userUsingCreditionals) {
+        const user = await db.collection('users').findOne({ email: email.toLowerCase(), accessToken: accessToken });
+        if (!user) {
             return NextResponse.json(
                 { error: 'User not found or invalid token' },
                 { status: 404 }

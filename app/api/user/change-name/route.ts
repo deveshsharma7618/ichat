@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     console.log("User found:", user);
     
 
-    if (user.password !== accessToken) {
+    if (user.accessToken !== accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
